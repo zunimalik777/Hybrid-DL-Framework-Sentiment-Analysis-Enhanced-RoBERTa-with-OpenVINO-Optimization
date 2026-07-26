@@ -1,0 +1,149 @@
+"""
+Data loading & preprocessing utilities for the IMDb and Sentiment140 datasets.
+
+Both datasets are normalized to a common schema:
+    {"text": str, "label": int}   where label 0 = negative, 1 = positive
+"""
+
+import os
+import re
+import zipfile
+import urllib.request
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+from . import config
+
+_URL_RE = re.compile(r"https?://\S+|www\.\S+")
+_MENTION_RE = re.compile(r"@\w+")
+_HTML_RE = re.compile(r"<.*?>")
+_MULTI_SPACE_RE = re.compile(r"\s+")
+_NON_ALPHA_RE = re.compile(r"[^a-zA-Z0-9!?.,'\s]")
+
+
+def clean_text(text: str) -> str:
+    """Lightweight, model-agnostic text cleaning shared by every component
+    (VADER, Word2Vec/GRU, RoBERTa tokenizer input)."""
+    text = str(text)
+    text = _HTML_RE.sub(" ", text)
+    text = _URL_RE.sub(" ", text)
+    text = _MENTION_RE.sub(" ", text)
+    text = _NON_ALPHA_RE.sub(" ", text)
+    text = _MULTI_SPACE_RE.sub(" ", text).strip()
+    return text
+
+
+# --------------------------------------------------------------------------
+# IMDb
+# --------------------------------------------------------------------------
+def load_imdb(max_samples=config.MAX_SAMPLES_PER_DATASET) -> pd.DataFrame:
+    """Loads the IMDb Movie Review dataset via HuggingFace `datasets`."""
+    from datasets import load_dataset
+
+    ds = load_dataset(config.IMDB_DATASET_NAME)
+    train_df = ds["train"].to_pandas()
+    test_df = ds["test"].to_pandas()
+    df = pd.concat([train_df, test_df], ignore_index=True)
+    df = df.rename(columns={"label": "label", "text": "text"})
+
+    if max_samples is not None and len(df) > max_samples:
+        df = df.groupby("label", group_keys=False).apply(
+            lambda x: x.sample(min(len(x), max_samples // 2), random_state=config.SEED)
+        )
+
+    df["text"] = df["text"].apply(clean_text)
+    df["source"] = "imdb"
+    return df[["text", "label", "source"]].reset_index(drop=True)
+
+
+# --------------------------------------------------------------------------
+# Sentiment140
+# --------------------------------------------------------------------------
+def _download_sentiment140_fallback(dest_dir: str) -> str:
+    """Fallback direct download (Stanford mirror) if kagglehub / Kaggle
+    credentials are not configured in the Colab environment."""
+    os.makedirs(dest_dir, exist_ok=True)
+    zip_path = os.path.join(dest_dir, "sentiment140.zip")
+    if not os.path.exists(zip_path):
+        urllib.request.urlretrieve(config.SENTIMENT140_FALLBACK_URL, zip_path)
+    with zipfile.ZipFile(zip_path, "r") as z:
+        z.extractall(dest_dir)
+    for fname in os.listdir(dest_dir):
+        if fname.lower().startswith("training") and fname.lower().endswith(".csv"):
+            return os.path.join(dest_dir, fname)
+    raise FileNotFoundError("Could not locate Sentiment140 training CSV after extraction.")
+
+
+def load_sentiment140(max_samples=config.MAX_SAMPLES_PER_DATASET) -> pd.DataFrame:
+    """Loads the Sentiment140 tweet dataset (1.6M tweets, polarity 0/4).
+
+    Tries `kagglehub` first (works seamlessly in Colab with a kaggle.json
+    token), and falls back to a direct Stanford mirror download otherwise.
+    """
+    csv_path = None
+    try:
+        import kagglehub
+
+        dataset_dir = kagglehub.dataset_download(config.SENTIMENT140_KAGGLE_ID)
+        for root, _, files in os.walk(dataset_dir):
+            for f in files:
+                if f.lower().endswith(".csv"):
+                    csv_path = os.path.join(root, f)
+                    break
+    except Exception as exc:  # noqa: BLE001
+        print(f"[sentiment140] kagglehub unavailable ({exc}); using fallback download.")
+
+    if csv_path is None:
+        csv_path = _download_sentiment140_fallback(
+            os.path.join(config.DATA_DIR, "sentiment140_raw")
+        )
+
+    cols = ["target", "id", "date", "flag", "user", "text"]
+    df = pd.read_csv(csv_path, encoding="latin-1", names=cols, header=None)
+
+    # target: 0 = negative, 4 = positive -> map to 0 / 1
+    df = df[df["target"].isin([0, 4])].copy()
+    df["label"] = df["target"].map({0: 0, 4: 1})
+
+    if max_samples is not None and len(df) > max_samples:
+        df = df.groupby("label", group_keys=False).apply(
+            lambda x: x.sample(min(len(x), max_samples // 2), random_state=config.SEED)
+        )
+
+    df["text"] = df["text"].apply(clean_text)
+    df["source"] = "sentiment140"
+    return df[["text", "label", "source"]].reset_index(drop=True)
+
+
+# --------------------------------------------------------------------------
+# Combined loading / splitting
+# --------------------------------------------------------------------------
+def load_all_datasets(max_samples=config.MAX_SAMPLES_PER_DATASET):
+    """Returns a dict of {dataset_name: DataFrame} for IMDb and Sentiment140,
+    plus a combined DataFrame useful for cross-domain evaluation."""
+    imdb_df = load_imdb(max_samples=max_samples)
+    sent140_df = load_sentiment140(max_samples=max_samples)
+    combined_df = pd.concat([imdb_df, sent140_df], ignore_index=True)
+    combined_df = combined_df.sample(frac=1.0, random_state=config.SEED).reset_index(drop=True)
+    return {"imdb": imdb_df, "sentiment140": sent140_df, "combined": combined_df}
+
+
+def split_dataset(df: pd.DataFrame, test_size=config.TEST_SIZE, val_size=config.VAL_SIZE):
+    """Stratified train / validation / test split."""
+    train_val_df, test_df = train_test_split(
+        df, test_size=test_size, stratify=df["label"], random_state=config.SEED
+    )
+    rel_val_size = val_size / (1 - test_size)
+    train_df, val_df = train_test_split(
+        train_val_df, test_size=rel_val_size, stratify=train_val_df["label"], random_state=config.SEED
+    )
+    return (
+        train_df.reset_index(drop=True),
+        val_df.reset_index(drop=True),
+        test_df.reset_index(drop=True),
+    )
+
+
+def tokenize_simple(text: str):
+    """Whitespace tokenizer used for Word2Vec training / GRU input sequences."""
+    return text.lower().split()
