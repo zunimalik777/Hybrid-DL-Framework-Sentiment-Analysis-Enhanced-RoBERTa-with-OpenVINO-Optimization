@@ -1,0 +1,10 @@
+"""
+Sentiment Analysis Research Project
+====================================
+RoBERTa | Two-Layer GRU | VADER | Word2Vec | ONNX | OpenVINO (FP32/FP16) + NNCF INT8
+
+Evaluated on the IMDb and Sentiment140 datasets with Accuracy, Precision,
+Recall, and F1-score.
+"""
+
+__version__ = "1.0.0"
