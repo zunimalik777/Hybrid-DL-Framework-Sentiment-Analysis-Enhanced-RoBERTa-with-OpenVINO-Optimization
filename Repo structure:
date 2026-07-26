@@ -1,0 +1,15 @@
+sentiment-research-project/
+├── README.md, LICENSE, .gitignore, requirements.txt
+├── notebooks/Sentiment_Analysis_Research_Colab.ipynb   ← open this in Colab
+├── src/
+│   ├── config.py            – seeds, paths, all hyperparameters
+│   ├── data_utils.py        – IMDb + Sentiment140 loading/cleaning/splitting
+│   ├── vader_module.py      – Objective 3: VADER baseline
+│   ├── word2vec_module.py   – Objective 4: Word2Vec (skip-gram)
+│   ├── gru_model.py         – Objective 2: Two-Layer ("two-state") GRU
+│   ├── roberta_model.py     – Objective 1: RoBERTa fine-tuning
+│   ├── export_onnx.py       – Objective 5: ONNX export
+│   ├── openvino_utils.py    – Objective 6: OpenVINO FP32/FP16 + NNCF INT8
+│   ├── metrics.py           – Accuracy/Precision/Recall/F1 + latency/size benchmarking
+│   └── pipeline.py          – orchestrates everything end-to-end
+└── data/ models/ results/   – populated at runtime
