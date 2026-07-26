@@ -1,0 +1,50 @@
+RoBERTa-TSGRU-VADER-OpenVINO/
+│
+├── README.md
+├── requirements.txt
+├── LICENSE
+├── environment.yml
+│
+├── data/
+│   ├── imdb/
+│   └── sentiment140/
+│
+├── notebooks/
+│   ├── 01_Data_Preprocessing.ipynb
+│   ├── 02_Word2Vec_Training.ipynb
+│   ├── 03_VADER_Scoring.ipynb
+│   ├── 04_RoBERTa_TSGRU_Training.ipynb
+│   ├── 05_Evaluation.ipynb
+│   ├── 06_ONNX_Conversion.ipynb
+│   ├── 07_OpenVINO_FP32_FP16.ipynb
+│   ├── 08_NNCF_INT8.ipynb
+│   └── 09_Inference_Demo.ipynb
+│
+├── src/
+│   ├── preprocessing.py
+│   ├── augmentation.py
+│   ├── word2vec_embedding.py
+│   ├── vader_features.py
+│   ├── dataset.py
+│   ├── model.py
+│   ├── tsgru.py
+│   ├── trainer.py
+│   ├── losses.py
+│   ├── metrics.py
+│   ├── evaluate.py
+│   ├── export_onnx.py
+│   ├── openvino_fp32.py
+│   ├── openvino_fp16.py
+│   ├── quantize_nncf.py
+│   ├── benchmark.py
+│   └── utils.py
+│
+├── configs/
+│   ├── imdb.yaml
+│   ├── sentiment140.yaml
+│   └── model.yaml
+│
+├── figures/
+├── outputs/
+├── checkpoints/
+└── models/
