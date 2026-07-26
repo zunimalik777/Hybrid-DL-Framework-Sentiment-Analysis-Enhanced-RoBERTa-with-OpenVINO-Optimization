@@ -1,0 +1,117 @@
+# Sentiment Analysis Research Project
+
+**RoBERTa • Two-Layer ("Two-State") GRU • VADER • Word2Vec • ONNX • OpenVINO (FP32/FP16) • NNCF INT8**
+
+An end-to-end sentiment classification research pipeline comparing a transformer
+model (RoBERTa), a recurrent model (Word2Vec + two-layer GRU), and a rule-based
+baseline (VADER), then optimizing the trained models for edge/production inference
+through ONNX export, OpenVINO conversion (FP32/FP16), and OpenVINO NNCF INT8
+quantization — all benchmarked on **Accuracy, Precision, Recall, and F1-score**
+across the **IMDb** and **Sentiment140** datasets.
+
+## Project Objectives
+
+| # | Objective | Location |
+|---|-----------|----------|
+| 1 | RoBERTa fine-tuning | `src/roberta_model.py` |
+| 2 | Two-Layer ("Two-State") GRU | `src/gru_model.py` |
+| 3 | VADER baseline | `src/vader_module.py` |
+| 4 | Word2Vec embeddings | `src/word2vec_module.py` |
+| 5 | ONNX export | `src/export_onnx.py` |
+| 6 | OpenVINO FP32/FP16 + NNCF INT8 | `src/openvino_utils.py` |
+| — | Evaluation (Accuracy/Precision/Recall/F1) | `src/metrics.py` |
+| — | Orchestration | `src/pipeline.py` |
+| — | Data (IMDb + Sentiment140) | `src/data_utils.py` |
+
+## Repository Structure
+
+```
+sentiment-research-project/
+├── README.md
+├── LICENSE
+├── requirements.txt
+├── .gitignore
+├── notebooks/
+│   └── Sentiment_Analysis_Research_Colab.ipynb   # main Colab notebook (run this)
+├── src/
+│   ├── __init__.py
+│   ├── config.py            # central hyperparameters & paths
+│   ├── data_utils.py        # IMDb + Sentiment140 loading/cleaning/splitting
+│   ├── vader_module.py      # Objective 3: VADER
+│   ├── word2vec_module.py   # Objective 4: Word2Vec
+│   ├── gru_model.py         # Objective 2: Two-Layer GRU
+│   ├── roberta_model.py     # Objective 1: RoBERTa
+│   ├── export_onnx.py       # Objective 5: ONNX export
+│   ├── openvino_utils.py    # Objective 6: OpenVINO FP32/FP16 + NNCF INT8
+│   ├── metrics.py           # Accuracy / Precision / Recall / F1 + benchmarking
+│   └── pipeline.py          # end-to-end orchestration
+├── data/                    # downloaded datasets land here (gitignored)
+├── models/                  # trained checkpoints, ONNX, OpenVINO IR (gitignored)
+└── results/                 # metric tables, plots, CSVs (gitignored)
+```
+
+## Quickstart — Google Colab
+
+1. Upload `sentiment-research-project.zip` to your Colab session's `/content` folder
+   (drag-and-drop into the Files pane, or `Files > Upload`).
+2. Open `notebooks/Sentiment_Analysis_Research_Colab.ipynb` in Colab
+   (`File > Open notebook > Upload` after unzipping, or open it directly from Drive).
+3. Set `Runtime > Change runtime type > T4 GPU` for faster RoBERTa fine-tuning.
+4. Run all cells (`Runtime > Run all`). The first cell auto-extracts the zip if present.
+
+The notebook will:
+- Download & clean IMDb (via HuggingFace `datasets`) and Sentiment140 (via `kagglehub`,
+  with an automatic fallback to a direct Stanford mirror download if no Kaggle token is
+  configured).
+- Train/evaluate VADER, Word2Vec+GRU, and RoBERTa.
+- Export both trained models to ONNX.
+- Convert to OpenVINO IR at FP32 and FP16, then quantize to INT8 with NNCF.
+- Re-evaluate every variant and print a consolidated comparison table + bar chart.
+
+## Quickstart — Local / Other Environments
+
+```bash
+git clone <your-repo-url>
+cd sentiment-research-project
+pip install -r requirements.txt
+jupyter notebook notebooks/Sentiment_Analysis_Research_Colab.ipynb
+```
+
+Or drive it entirely from Python:
+
+```python
+from src import pipeline
+results_table = pipeline.run_full_pipeline("imdb")        # or "sentiment140" / "combined"
+print(results_table)
+```
+
+## Evaluation Metrics
+
+Every model variant (VADER, GRU, RoBERTa, and each of their ONNX / OpenVINO FP32 /
+OpenVINO FP16 / OpenVINO INT8 exports) is scored identically via
+`src/metrics.compute_metrics`:
+
+- **Accuracy**
+- **Precision**
+- **Recall**
+- **F1-score**
+- Model size (MB) and inference latency/throughput (for the optimization stage)
+
+Results are written to `results/final_results_<dataset>.csv` and plotted to
+`results/comparison_<dataset>.png`.
+
+## Notes on Sentiment140 Access
+
+Sentiment140 is hosted on Kaggle. The loader (`src/data_utils.load_sentiment140`)
+tries `kagglehub` first — upload a `kaggle.json` API token to Colab or configure the
+`KAGGLE_USERNAME` / `KAGGLE_KEY` environment variables — and automatically falls back
+to a direct Stanford mirror ZIP download if Kaggle credentials aren't present.
+
+## Reproducibility
+
+A global seed (`config.SEED = 42`) is applied to Python, NumPy, and PyTorch RNGs via
+`config.set_seed()`, called at the start of the pipeline.
+
+## License
+
+MIT — see `LICENSE`.
