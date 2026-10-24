@@ -1,0 +1,82 @@
+"""Repeat training with fixed data partitions and summarize mean/std metrics."""
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pandas as pd
+
+
+def optional_int(value):
+    if value is None or str(value).lower() in {"none", "null", "all"}:
+        return None
+    return int(value)
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--dataset", choices=["imdb", "sentiment140"], required=True)
+    p.add_argument("--output-root", default=None)
+    p.add_argument("--seeds", default="42,43,44,45,46")
+    p.add_argument("--split-seed", type=int, default=42)
+    p.add_argument("--data-dir", default="data")
+    p.add_argument("--max-train-samples", type=optional_int, default=5000)
+    p.add_argument("--max-eval-samples", type=optional_int, default=1000)
+    p.add_argument("--epochs", type=int, default=1)
+    p.add_argument("--batch-size", type=int, default=8)
+    p.add_argument("--max-length", type=int, default=128)
+    p.add_argument("--max-augmented-samples", type=int, default=1000)
+    p.add_argument("--disable-augmentation", action="store_true")
+    args = p.parse_args()
+
+    seeds = [int(x.strip()) for x in args.seeds.split(",") if x.strip()]
+    if not seeds:
+        raise ValueError("Provide at least one seed.")
+    root = Path(args.output_root or f"outputs/{args.dataset}_multi_seed")
+    root.mkdir(parents=True, exist_ok=True)
+
+    script_args = []
+    for seed in seeds:
+        out_dir = root / f"seed_{seed}"
+        cmd = [
+            sys.executable, "-m", "sg_csf_tsgru.train",
+            "--dataset", args.dataset,
+            "--data-dir", args.data_dir,
+            "--output-dir", str(out_dir),
+            "--max-train-samples", "none" if args.max_train_samples is None else str(args.max_train_samples),
+            "--max-eval-samples", "none" if args.max_eval_samples is None else str(args.max_eval_samples),
+            "--epochs", str(args.epochs),
+            "--batch-size", str(args.batch_size),
+            "--max-length", str(args.max_length),
+            "--seed", str(seed),
+            "--split-seed", str(args.split_seed),
+            "--max-augmented-samples", str(args.max_augmented_samples),
+        ]
+        if args.disable_augmentation:
+            cmd.append("--disable-augmentation")
+        print("\nRunning seed:", seed)
+        subprocess.run(cmd, check=True)
+        metrics_path = out_dir / "test_metrics.json"
+        metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+        script_args.append({"seed": seed, **{k: metrics[k] for k in ["accuracy", "precision", "recall", "f1", "loss"]}})
+
+    df = pd.DataFrame(script_args)
+    df.to_csv(root / "per_seed_metrics.csv", index=False)
+    summary = []
+    for metric in ["accuracy", "precision", "recall", "f1", "loss"]:
+        summary.append({
+            "metric": metric,
+            "mean": float(df[metric].mean()),
+            "std_sample": float(df[metric].std(ddof=1)) if len(df) > 1 else 0.0,
+        })
+    summary_df = pd.DataFrame(summary)
+    summary_df.to_csv(root / "mean_std_metrics.csv", index=False)
+    print("\nPer-seed metrics:\n", df.to_string(index=False))
+    print("\nMean and sample standard deviation:\n", summary_df.to_string(index=False))
+    print(f"\nSaved summaries to {root.resolve()}")
+
+
+if __name__ == "__main__":
+    main()
