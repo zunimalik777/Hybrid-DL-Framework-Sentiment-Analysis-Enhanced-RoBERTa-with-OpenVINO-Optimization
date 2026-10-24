@@ -1,4 +1,18 @@
 # Google Colab/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+env/
+data/
+outputs/
+*.pt
+*.model
+*.onnx
+openvino_ir/
+*.xml
+*.bin
+
 # Byte-compiled / cache
 __pycache__/
 *.py[cod]
