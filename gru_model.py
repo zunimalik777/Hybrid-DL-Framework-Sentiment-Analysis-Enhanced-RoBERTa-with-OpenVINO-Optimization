@@ -1,5 +1,5 @@
 """
-Objective 2: Two-Layer ("Two-State") GRU
+Objective 2: SG-TSGRU 
 
 A GRU classifier stacked with two recurrent layers (two hidden "states"
 propagated through the sequence), initialized with the Word2Vec
