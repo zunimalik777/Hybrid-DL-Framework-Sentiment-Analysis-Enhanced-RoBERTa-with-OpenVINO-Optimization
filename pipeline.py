@@ -2,11 +2,12 @@
 End-to-end orchestration of all six objectives:
 
     1. RoBERTa fine-tuning & evaluation
-    2. Two-Layer GRU (+ Word2Vec) training & evaluation
-    3. VADER baseline evaluation
+    2. SG-CSF
+    3. SG-TSGRU (Word2Vec+VADER) training & evaluation 
     4. Word2Vec embedding training (feeds step 2)
-    5. ONNX export (RoBERTa + GRU)
-    6. OpenVINO FP32 / FP16 conversion + NNCF INT8 quantization,
+    5. VADER baseline evaluation
+    6. ONNX export (RoBERTa + GRU)
+    7. OpenVINO FP32 / FP16 conversion + NNCF INT8 quantization,
        each re-evaluated so accuracy/latency/size trade-offs are visible.
 
 This module is imported from the Colab notebook; each function can also
@@ -19,9 +20,9 @@ import pandas as pd
 
 from . import config
 from . import data_utils
-from . import vader_module
 from . import word2vec_module
-from . import gru_model
+from . import vader_module
+from . import SG-TSGRU 
 from . import roberta_model
 from . import metrics
 from . import export_onnx
@@ -43,19 +44,7 @@ def prepare_data():
 
 
 # --------------------------------------------------------------------------
-# 3. VADER baseline (no training required)
-# --------------------------------------------------------------------------
-def run_vader_baseline(test_df, dataset_label=""):
-    vader = vader_module.VaderBaseline()
-    preds = vader.predict_batch(test_df["text"].tolist())
-    labels = test_df["label"].to_numpy()
-    result = metrics.compute_metrics(labels, preds)
-    print(f"[VADER | {dataset_label}] {result}")
-    return result, np.array(preds), labels
-
-
-# --------------------------------------------------------------------------
-# 4 + 2. Word2Vec + Two-Layer GRU
+# 4 + 2. Word2Vec + SG-TSGRU
 # --------------------------------------------------------------------------
 def run_word2vec_gru(train_df, val_df, test_df, dataset_label=""):
     w2v_model = word2vec_module.train_word2vec(train_df["text"].tolist())
@@ -89,6 +78,16 @@ def run_word2vec_gru(train_df, val_df, test_df, dataset_label=""):
     }
     return result, preds, labels, artifacts
 
+# --------------------------------------------------------------------------
+# 3. VADER baseline (no training required)
+# --------------------------------------------------------------------------
+def run_vader_baseline(test_df, dataset_label=""):
+    vader = vader_module.VaderBaseline()
+    preds = vader.predict_batch(test_df["text"].tolist())
+    labels = test_df["label"].to_numpy()
+    result = metrics.compute_metrics(labels, preds)
+    print(f"[VADER | {dataset_label}] {result}")
+    return result, np.array(preds), labels
 
 # --------------------------------------------------------------------------
 # 1. RoBERTa
