@@ -1,8 +1,8 @@
 """
-Objective 3: VADER (Valence Aware Dictionary and sEntiment Reasoner)
+Objective 4: VADER (Valence Aware Dictionary and sEntiment Reasoner)
 
 A rule/lexicon-based sentiment baseline used to benchmark the learned
-models (GRU, RoBERTa) against a zero-training reference point.
+models (TSGRU, RoBERTa) against a zero-training reference point.
 """
 
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
