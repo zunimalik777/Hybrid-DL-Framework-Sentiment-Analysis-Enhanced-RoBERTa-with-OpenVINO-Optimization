@@ -1,9 +1,7 @@
 """
-Objective 4: Word2Vec
+Objective 3: Word2Vec
 
 Trains a domain-specific Word2Vec (skip-gram) model on the combined
-corpus and builds the vocabulary + embedding matrix consumed by the
-Two-Layer GRU (Objective 2).
 """
 
 import numpy as np
