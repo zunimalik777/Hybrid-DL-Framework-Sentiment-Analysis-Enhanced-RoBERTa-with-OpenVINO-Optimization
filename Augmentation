@@ -1,0 +1,94 @@
+"""Sentiment-Preserving Semantic Augmentation (SP-SA)."""
+
+import random
+import re
+from typing import List, Sequence, Tuple
+
+from gensim.models import Word2Vec
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+
+# Avoid changing function words whose replacement can reverse or restructure sentiment.
+PROTECTED_WORDS = {
+    "not", "no", "nor", "never", "n't", "cannot", "hardly", "barely",
+    "very", "too", "most", "least", "without", "but", "although", "however",
+    "and", "or", "if", "unless", "only", "just", "really",
+}
+TOKEN_RE = re.compile(r"\b[A-Za-z]+(?:['’][A-Za-z]+)?\b")
+
+
+def sentiment_preserving_augment(
+    train_pairs: Sequence[Tuple[str, int]],
+    word2vec: Word2Vec,
+    max_augmented_samples: int = 1000,
+    max_candidates: int = 10000,
+    augmentation_probability: float = 0.5,
+    similarity_threshold: float = 0.65,
+    sentiment_delta_threshold: float = 0.10,
+    replacement_top_k: int = 10,
+    seed: int = 42,
+) -> List[Tuple[str, int]]:
+    """Append accepted synthetic samples; never use validation/test examples here.
+
+    A token replacement must satisfy both a Word2Vec cosine-similarity threshold and a
+    VADER compound-score consistency threshold. Original training instances are retained.
+    """
+    if max_augmented_samples <= 0 or not train_pairs:
+        return list(train_pairs)
+
+    rng = random.Random(seed)
+    vader = SentimentIntensityAnalyzer()
+    output = list(train_pairs)
+    order = list(range(len(train_pairs)))
+    rng.shuffle(order)
+    order = order[: min(len(order), max_candidates)]
+    accepted = 0
+
+    for idx in order:
+        if accepted >= max_augmented_samples:
+            break
+        if rng.random() > augmentation_probability:
+            continue
+
+        text, label = train_pairs[idx]
+        words = TOKEN_RE.findall(str(text))
+        eligible = [w for w in words if len(w) >= 4 and w.lower() not in PROTECTED_WORDS]
+        rng.shuffle(eligible)
+        if not eligible:
+            continue
+
+        base_compound = vader.polarity_scores(str(text))["compound"]
+        augmented = None
+        for original in eligible[: min(5, len(eligible))]:
+            key = original.lower().replace("’", "'")
+            if key not in word2vec.wv:
+                continue
+            try:
+                candidates = word2vec.wv.most_similar(key, topn=replacement_top_k)
+            except KeyError:
+                continue
+
+            for candidate, similarity in candidates:
+                candidate = candidate.lower()
+                if similarity < similarity_threshold:
+                    continue
+                if not candidate.isalpha() or candidate in PROTECTED_WORDS or candidate == key:
+                    continue
+
+                pattern = r"(?<!\w)" + re.escape(original) + r"(?!\w)"
+                trial = re.sub(pattern, candidate, str(text), count=1, flags=re.IGNORECASE)
+                if trial == str(text):
+                    continue
+                trial_compound = vader.polarity_scores(trial)["compound"]
+                if abs(base_compound - trial_compound) <= sentiment_delta_threshold:
+                    augmented = trial
+                    break
+            if augmented is not None:
+                break
+
+        if augmented is not None:
+            output.append((augmented, int(label)))
+            accepted += 1
+
+    print(f"SP-SA: retained {len(train_pairs)} originals and accepted {accepted} augmented samples.")
+    return output
