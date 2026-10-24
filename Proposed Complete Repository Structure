@@ -1,4 +1,4 @@
-RoBERTa-TSGRU-VADER-OpenVINO/
+Proposed SG-CSF-SG-TSGRU Model-OpenVINO/
 │
 ├── README.md
 ├── requirements.txt
@@ -13,7 +13,7 @@ RoBERTa-TSGRU-VADER-OpenVINO/
 │   ├── 01_Data_Preprocessing.ipynb
 │   ├── 02_Word2Vec_Training.ipynb
 │   ├── 03_VADER_Scoring.ipynb
-│   ├── 04_RoBERTa_TSGRU_Training.ipynb
+│   ├── 04_RoBERTa_SG-TSGRU_Training.ipynb
 │   ├── 05_Evaluation.ipynb
 │   ├── 06_ONNX_Conversion.ipynb
 │   ├── 07_OpenVINO_FP32_FP16.ipynb
