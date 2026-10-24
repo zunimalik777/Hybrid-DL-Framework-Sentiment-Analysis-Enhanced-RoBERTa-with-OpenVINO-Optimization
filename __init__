@@ -1,7 +1,7 @@
 """
 Sentiment Analysis Research Project
 ====================================
-RoBERTa | Two-Layer GRU | VADER | Word2Vec | ONNX | OpenVINO (FP32/FP16) + NNCF INT8
+"""Sentiment-Guided Contextual Fusion and Two-State GRU sentiment model."""
 
 Evaluated on the IMDb and Sentiment140 datasets with Accuracy, Precision,
 Recall, and F1-score.
