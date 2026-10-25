@@ -1,11 +1,15 @@
+# """Optional ONNX-to-OpenVINO IR conversion utility."""
 """
 Objective 5: ONNX Export
 
-Exports both the RoBERTa transformer and the Two-Layer GRU to the ONNX
+Exports both the RoBERTa transformer and the SG-TSGRU to the ONNX
 format, which is the common entry point for the OpenVINO (FP32/FP16)
 and NNCF INT8 conversions in `openvino_utils.py`.
 """
 
+import argparse
+from pathlib import Path
+import openvino as ov
 import os
 import torch
 import onnx
