@@ -1,4 +1,5 @@
 """
+# RoBERTa + Word2Vec + VADER with SG-CSF, SG-TSGRU and OpenVINO Optimization (FP32 / FP16) + NNCF INT8
 Objective 6: OpenVINO Optimization (FP32 / FP16) + NNCF INT8 Quantization
 
 Pipeline:
