@@ -1,7 +1,7 @@
 """
 Shared evaluation utilities: Accuracy, Precision, Recall, F1-score,
 confusion matrix plotting, and latency/throughput benchmarking used to
-compare every stage of the pipeline (VADER, GRU, RoBERTa, ONNX, OpenVINO
+compare every stage of the pipeline ( RoBERTa, Word2Vec, VADER, SG-TSGRU, ONNX, OpenVINO
 FP32/FP16, and NNCF INT8).
 """
 
