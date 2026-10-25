@@ -7,6 +7,7 @@ from nltk import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import LancasterStemmer, WordNetLemmatizer
 
+# Dataset uploaded
 import pandas as pd
 C:'/Users/ZULQARNAIN/SentimentAnalysis/Corpus/imdb
 C:'/Users/ZULQARNAIN/SentimentAnalysis/Corpus/Sentiment140
